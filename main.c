@@ -31,12 +31,12 @@
 
 #define MESSAGE_SIZE 256
 #define DIGEST_SIZE 16
-#define OUTPUT_QUOTES 333
 
 ///
 
 // light and fast config
 #define FAST_MODE
+#define OUTPUT_QUOTES 333
 #define FIRSTLAYER_SIZE 256
 #define HIDDEN_SIZE 512
 #define TRAINING_LOOPS 1
@@ -47,6 +47,7 @@ const float _lgain = 1.0;
 
 /*
 // this is not the vegetarian option
+#define OUTPUT_QUOTES 3333
 #define FIRSTLAYER_SIZE 512
 #define HIDDEN_SIZE 1024
 #define TRAINING_LOOPS 1
@@ -1018,12 +1019,12 @@ void rndGen(const char* file, const float max)
                     const uint ind = (((double)nstr[i]+1.0)*(double)TABLE_SIZE_H)+0.5;
                     if(nstr[i] != 0)
                     {
-                        k++;
                         fprintf(f, "%s ", wtable[ind]);
                         printf("%s ", wtable[ind]);
                     }
                 }
                 
+                k++;
                 fprintf(f, "\n");
                 printf("\n");
             }
