@@ -1,5 +1,5 @@
 # PortTalbot
-A telegram bot / DaisyGANv5.
+A telegram bot / DaisyGANv4.
 
 The backprop was something to be desired in [PortTalbotv1](https://github.com/DaisyGAN/PortTalbot), this version is a re-code to fix all of the issues in my prior code base.
 
