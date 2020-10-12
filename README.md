@@ -1,4 +1,4 @@
-# PortTalbot
+# PortTalbotv2
 A telegram bot / DaisyGANv4.
 
 The back-propagation was something to be desired in [PortTalbotv1](https://github.com/DaisyGAN/PortTalbot); this version is a re-code to fix all of the issues in the prior code base.
