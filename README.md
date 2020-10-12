@@ -9,6 +9,8 @@ With the failure of the generator I decided it would be a suitable alternative t
 
 As such I suggest using `./cfdgan genrnd 0.1` to `./cfdgan genrnd 0.001` to generate random quotes from the trained dataset.
 
+You can find these bots on telegram, [@DaisyAbbot](http://t.me/daisyabbot) and [@PortTalbot](http://t.me/porttalbot). 
+
 ## Install
 - Compile `main.c` by running `compile.sh`
 - Update the BOT KEY / ID in the `tgmain.php` and copy over to your `www` directory.
