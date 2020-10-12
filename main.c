@@ -3,7 +3,7 @@
     91f7d09794d8da29f028e77df49d4907
     https://github.com/DaisyGAN/
 --------------------------------------------------
-    DaisyGANv5 / PortTalbot
+    DaisyGANv4 / PortTalbot
 */
 
 #pragma GCC diagnostic ignored "-Wunused-result"
@@ -39,9 +39,9 @@
 
 #define TRAINING_LOOPS 1
 
-const float _dropout = 0.5;
-const float _lrate = 0.03;
-const float _lmomentum = 0.9;
+const float _lrate     = 0.03;
+const float _dropout   = 0.2;
+const float _lmomentum = 0.1;
 
 const float _lgain = 1.0;
 
@@ -125,7 +125,7 @@ void saveWeights()
     FILE* f = fopen("weights.dat", "w");
     if(f != NULL)
     {
-        for(uint i = 0; i < DIGEST_SIZE; i++)
+        for(uint i = 0; i < FIRSTLAYER_SIZE; i++)
         {
             if(fwrite(&d1[i].data[0], 1, d1[i].weights*sizeof(float), f) != d1[i].weights*sizeof(float))
                 printf("ERROR fwrite() in saveWeights() #1w\n");
@@ -195,7 +195,7 @@ void loadWeights()
         return;
     }
 
-    for(uint i = 0; i < DIGEST_SIZE; i++)
+    for(uint i = 0; i < FIRSTLAYER_SIZE; i++)
     {
         while(fread(&d1[i].data[0], 1, d1[i].weights*sizeof(float), f) != d1[i].weights*sizeof(float))
             sleep(333);
@@ -516,35 +516,40 @@ float doDiscriminator(const float* input, const float eo)
 
     // layer one, inputs (fc)
     float o1[FIRSTLAYER_SIZE];
-    float e1[FIRSTLAYER_SIZE];
     for(int i = 0; i < FIRSTLAYER_SIZE; i++)
-        o1[i] = arctan(doPerceptron(input, &d1[i]));
+        o1[i] = sigmoid(doPerceptron(input, &d1[i]));
 
     // layer two, hidden (fc expansion)
     float o2[HIDDEN_SIZE];
-    float e2[HIDDEN_SIZE];
     for(int i = 0; i < HIDDEN_SIZE; i++)
-        o2[i] = arctan(doPerceptron(&o1[0], &d2[i]));
+        o2[i] = sigmoid(doPerceptron(&o1[0], &d2[i]));
 
     // layer three, hidden (fc)
     float o3[HIDDEN_SIZE];
-    float e3[HIDDEN_SIZE];
+    
     for(int i = 0; i < HIDDEN_SIZE; i++)
-        o3[i] = arctan(doPerceptron(&o2[0], &d3[i]));
+        o3[i] = sigmoid(doPerceptron(&o2[0], &d3[i]));
 
     // layer four, output (fc compression)
     const float output = sigmoid(doPerceptron(&o3[0], &d4));
 
+    if(eo == -2)
+        return output;
+
 /**************************************
     Backward Prop Error
 **************************************/
-    
-    // output error
+
+    float e1[FIRSTLAYER_SIZE];
+    float e2[HIDDEN_SIZE];
+    float e3[HIDDEN_SIZE];
+
+    // layer 4
     const float error = eo - output;
     float e4 = _lgain * output * (1-output) * error;
     //float terror = 0.5 * (error * error);
 
-    // back prop error from output neuron
+    // layer 3 (output)
     float ler = 0;
     for(int j = 0; j < d4.weights; j++)
         ler += d4.data[j] * e4;
@@ -553,7 +558,7 @@ float doDiscriminator(const float* input, const float eo)
     for(int i = 0; i < HIDDEN_SIZE; i++)
         e3[i] = _lgain * o3[i] * (1-o3[i]) * ler;
 
-    // back prop error from layer three
+    // layer 2
     ler = 0;
     for(int i = 0; i < HIDDEN_SIZE; i++)
     {
@@ -564,7 +569,7 @@ float doDiscriminator(const float* input, const float eo)
         e2[i] = _lgain * o2[i] * (1-o2[i]) * ler;
     }
 
-    // back prop error from layer two [l1 will always have to be half the size of the hidden layer]
+    // layer 1
     ler = 0;
     float k = 0;
     int ki = 0;
@@ -589,6 +594,7 @@ float doDiscriminator(const float* input, const float eo)
     Update Weights
 **************************************/
 
+    // layer 1
     for(int i = 0; i < FIRSTLAYER_SIZE; i++)
     {
         if(_dropout != 0 && uRandWeight(0.01, 1) <= _dropout)
@@ -606,6 +612,7 @@ float doDiscriminator(const float* input, const float eo)
         d1[i].bias_momentum = err;
     }
 
+    // layer 2
     for(int i = 0; i < HIDDEN_SIZE; i++)
     {
         if(_dropout != 0 && uRandWeight(0.01, 1) <= _dropout)
@@ -623,6 +630,7 @@ float doDiscriminator(const float* input, const float eo)
         d2[i].bias_momentum = err;
     }
 
+    // layer 3
     for(int i = 0; i < HIDDEN_SIZE; i++)
     {
         if(_dropout != 0 && uRandWeight(0.01, 1) <= _dropout)
@@ -640,6 +648,7 @@ float doDiscriminator(const float* input, const float eo)
         d3[i].bias_momentum = err;
     }
 
+    // layer 4
     for(int j = 0; j < d4.weights; j++)
     {
         const float err = _lrate * e4 * o3[j];
@@ -655,27 +664,173 @@ float doDiscriminator(const float* input, const float eo)
     return output;
 }
 
-// void doGenerator(const float error, const float* input, float* output)
-// {
-//     // layer one, inputs (fc)
-//     float o1[FIRSTLAYER_SIZE];
-//     for(int i = 0; i < FIRSTLAYER_SIZE; i++)
-//         o1[i] = doPerceptron(input, &g1[i], error, -2);
+float doGenerator(const float* input, float* output)
+{
+    // layer one, inputs (fc)
+    float o1[FIRSTLAYER_SIZE];
+    for(int i = 0; i < FIRSTLAYER_SIZE; i++)
+        o1[i] = lecun_tanh(doPerceptron(input, &g1[i]));
 
-//     // layer two, hidden (fc expansion)
-//     float o2[HIDDEN_SIZE];
-//     for(int i = 0; i < HIDDEN_SIZE; i++)
-//         o2[i] = doPerceptron(&o1[0], &g2[i], error, -2);
+    // layer two, hidden (fc expansion)
+    float o2[HIDDEN_SIZE];
+    for(int i = 0; i < HIDDEN_SIZE; i++)
+        o2[i] = lecun_tanh(doPerceptron(&o1[0], &g2[i]));
 
-//     // layer three, hidden (fc)
-//     float o3[HIDDEN_SIZE];
-//     for(int i = 0; i < HIDDEN_SIZE; i++)
-//         o3[i] = doPerceptron(&o2[0], &g3[i], error, -2);
+    // layer three, hidden (fc)
+    float o3[HIDDEN_SIZE];
+    for(int i = 0; i < HIDDEN_SIZE; i++)
+        o3[i] = lecun_tanh(doPerceptron(&o2[0], &g3[i]));
     
-//     // layer four, output (fc compression)
-//     for(int i = 0; i < DIGEST_SIZE; i++)
-//         output[i] = doPerceptron(&o3[0], &g4[i], error, -2);
-// }
+    // layer four, output (fc compression)
+    for(int i = 0; i < DIGEST_SIZE; i++)
+        output[i] = bipolarSigmoid(lecun_tanh(doPerceptron(&o3[0], &g4[i])));
+
+    // convert output to exact word index
+    // for(int i = 0; i < DIGEST_SIZE; i++)
+    //     output[i] = ( floor(((output[i]+1.0)*TABLE_SIZE_H)+0.5) / (TABLE_SIZE_H) ) - 1.0;
+
+/**************************************
+    Backward Prop Error
+**************************************/
+
+    const float doutput = doDiscriminator(&output[0], -2);
+    const float error = 1.0 - doutput;//crossEntropy(doutput, 1);
+    float e5 = _lgain * doutput * (1-doutput) * error;
+
+    float e1[FIRSTLAYER_SIZE];
+    float e2[HIDDEN_SIZE];
+    float e3[HIDDEN_SIZE];
+    float e4[DIGEST_SIZE];
+    float ler = 0;
+
+    // layer 4
+    ler = 0;
+    for(int i = 0; i < DIGEST_SIZE; i++)
+        e4[i] = _lgain * output[i] * (1-output[i]) * e5;
+
+    // layer 3 (output)
+    for(int i = 0; i < DIGEST_SIZE; i++)
+    {
+        float ler = 0;
+        for(int j = 0; j < g4[i].weights; j++)
+            ler += g4[i].data[j] * e4[i];
+        ler += g4[i].bias * e4[i];
+        
+        for(int j = 0; j < HIDDEN_SIZE; j++)
+            e3[j] = _lgain * o3[j] * (1-o3[j]) * ler;
+    }
+
+    // layer 2
+    ler = 0;
+    for(int i = 0; i < HIDDEN_SIZE; i++)
+    {
+        for(int j = 0; j < g3[i].weights; j++)
+            ler += g3[i].data[j] * e3[i];
+        ler += g3[i].bias * e3[i];
+        
+        e2[i] = _lgain * o2[i] * (1-o2[i]) * ler;
+    }
+
+    // layer 1
+    ler = 0;
+    float k = 0;
+    int ki = 0;
+    for(int i = 0; i < FIRSTLAYER_SIZE; i++)
+    {
+        for(int j = 0; j < g2[i].weights; j++)
+            ler += g2[i].data[j] * e2[i];
+        ler += g2[i].bias * e2[i];
+        
+        int k0 = 0;
+        if(k != 0)
+            k0 = 1;
+        k += _lgain * o1[i] * (1-o1[i]) * ler;
+        if(k0 == 1)
+        {
+            e1[ki] = k / 2;
+            ki++;
+        }
+    }
+
+/**************************************
+    Update Weights
+**************************************/
+
+    // layer 1
+    for(int i = 0; i < FIRSTLAYER_SIZE; i++)
+    {
+        if(_dropout != 0 && uRandWeight(0.01, 1) <= _dropout)
+            continue;
+
+        for(int j = 0; j < g1[i].weights; j++)
+        {
+            const float err = _lrate * e1[i] * input[j];
+            g1[i].data[j] += err + _lmomentum * g1[i].momentum[j];
+            g1[i].momentum[j] = err;
+        }
+
+        const float err = _lrate * e1[i];
+        g1[i].bias += err + _lmomentum * g1[i].bias_momentum;
+        g1[i].bias_momentum = err;
+    }
+
+    // layer 2
+    for(int i = 0; i < HIDDEN_SIZE; i++)
+    {
+        if(_dropout != 0 && uRandWeight(0.01, 1) <= _dropout)
+            continue;
+
+        for(int j = 0; j < g2[i].weights; j++)
+        {
+            const float err = _lrate * e2[i] * o1[j];
+            g2[i].data[j] += err + _lmomentum * g2[i].momentum[j];
+            g2[i].momentum[j] = err;
+        }
+
+        const float err = _lrate * e2[i];
+        g2[i].bias += err + _lmomentum * g2[i].bias_momentum;
+        g2[i].bias_momentum = err;
+    }
+
+    // layer 3
+    for(int i = 0; i < HIDDEN_SIZE; i++)
+    {
+        if(_dropout != 0 && uRandWeight(0.01, 1) <= _dropout)
+            continue;
+
+        for(int j = 0; j < g3[i].weights; j++)
+        {
+            const float err = _lrate * e3[i] * o2[j];
+            g3[i].data[j] += err + _lmomentum * g3[i].momentum[j];
+            g3[i].momentum[j] = err;
+        }
+
+        const float err = _lrate * e3[i];
+        g3[i].bias += err + _lmomentum * g3[i].bias_momentum;
+        g3[i].bias_momentum = err;
+    }
+
+    // layer 4
+    for(int i = 0; i < DIGEST_SIZE; i++)
+    {
+        if(_dropout != 0 && uRandWeight(0.01, 1) <= _dropout)
+            continue;
+            
+        for(int j = 0; j < d4.weights; j++)
+        {
+            const float err = _lrate * e4[i] * o3[j];
+            g4[i].data[j] += err + _lmomentum * g4[i].momentum[j];
+            g4[i].momentum[j] = err;
+        }
+
+        const float err = _lrate * e4[i];
+        g4[i].bias += err + _lmomentum * g4[i].bias_momentum;
+        g4[i].bias_momentum = err;
+    }
+    
+    // return discriminator error
+    return error;
+}
 
 float rmseDiscriminator()
 {
@@ -813,7 +968,7 @@ float rndScentence()
 
     for(int i = 0; i < DIGEST_SIZE; i++)
     {
-        const uint ind = (nstr[i]+1.0)*TABLE_SIZE_H;
+        const uint ind = (((double)nstr[i]+1.0)*(double)TABLE_SIZE_H)+0.5;
         if(nstr[i] != 0)
             printf("%s (%.2f) ", wtable[ind], nstr[i]);
     }
@@ -824,67 +979,80 @@ float rndScentence()
     return r*100; //arctan conversion
 }
 
-// void trainGenerator(const char* file)
-// {
-//     // train generator
-//     uint index = 0;
-//     float last_error = 0;
-//     FILE* f = fopen(file, "w");
-//     if(f != NULL)
-//     {
-//         for(int k = 0; k < OUTPUT_QUOTES; NULL)
-//         {
-//             // random generator input
-//             float input[DIGEST_SIZE] = {0};
-//             const int len = uRand(1, DIGEST_SIZE-1);
-//             for(int i = 0; i < len; i++)
-//                 input[i] = (((double)uRand(0, TABLE_SIZE))/TABLE_SIZE_H)-1.0;
+void rndGen(const float min)
+{
+    float nstr[DIGEST_SIZE] = {0};
+    const int len = uRand(1, DIGEST_SIZE-1);
+    for(int i = 0; i < len; i++)
+        nstr[i] = (((double)uRand(0, TABLE_SIZE))/TABLE_SIZE_H)-1.0;
 
-//             // do generator
-//             float output[DIGEST_SIZE] = {0};
-//             doGenerator(last_error * 0.3, &input[0], &output[0]);
+    const float r = doDiscriminator(nstr, -2);
+    if(1-r < min)
+    {
+        for(int i = 0; i < DIGEST_SIZE; i++)
+        {
+            const uint ind = (((double)nstr[i]+1.0)*(double)TABLE_SIZE_H)+0.5;
+            if(nstr[i] != 0)
+                printf("%s ", wtable[ind]);
+        }
 
-//             // feed generator output into discriminator input, take the error, sigmoid it to 0-1, take the loss, put it back through as the error for the next generation
-//             last_error = crossEntropy(sigmoid(3.141592654 - (doDiscriminator(&output[0], -2) + 1.57079632679)), 1);
+        printf("\n");
+    }
+}
 
-//             // convert output to string of words
-//             if(last_error <= 0.5)
-//             {
-//                 k++;
+void trainGenerator(const char* file)
+{
+    // train generator
+    uint index = 0;
+    float error = 0;
+    FILE* f = fopen(file, "w");
+    if(f != NULL)
+    {
+        for(int k = 0; k < OUTPUT_QUOTES; NULL)
+        {
+            // random generator input
+            // float input[DIGEST_SIZE] = {0};
+            // const int len = uRand(1, DIGEST_SIZE-1);
+            // for(int i = 0; i < len; i++)
+            //     input[i] = (((double)uRand(0, TABLE_SIZE))/TABLE_SIZE_H)-1.0;
 
-//                 if(_log == 1)
-//                     printf("[%.2f] ", last_error);
-//                 const double pre1 = TABLE_SIZE / 3.141592654;
-//                 int last_index = -1;
-//                 for(int i = 0; i < DIGEST_SIZE; i++)
-//                 {
-//                     const double ind = (( ((double)output[i])+1.57079632679 ) *pre1)+0.5; //arctan conversion
-//                     if(output[i] != 0.0 && ind < TABLE_SIZE && ind > 0)
-//                     {
-//                         const int new_index = (int)ind;
-//                         if(new_index == last_index) //stop the bot repeating words
-//                             continue;
-//                         last_index = new_index;
-//                         fprintf(f, "%s ", wtable[new_index]);
-//                         if(_log == 1)
-//                             printf("%s ", wtable[new_index]); //printf("%s (%i) ", wtable[(int)ind], (int)ind);
-//                     }
-//                 }
-//                 fprintf(f, "\n");
-//                 if(_log == 1)
-//                     printf("\n");
-//             }
+            float input[DIGEST_SIZE] = {0};
+            for(int i = 0; i < DIGEST_SIZE; i++)
+                input[i] = qRandWeight(-1, 1);
 
-//             // back prop the generator [defunct method of backprop]
-//             //backpropGenerator(last_error, 0.001);
+            // do generator
+            float output[DIGEST_SIZE] = {0};
+            error = doGenerator(&input[0], &output[0]);
 
-//             // output error
-//             //printf("[%u]ERROR: %.2f\n\n", index, last_error);
-//             //index++;
-//             //sleep(1);
-//         }
-//     }
-// }
+            // convert output to string of words
+            if(error <= 0.5)
+            {
+                k++;
+
+                if(_log == 1)
+                    printf("[%.2f] ", error);
+                int last_index = -1;
+                for(int i = 0; i < DIGEST_SIZE; i++)
+                {
+                    const double ind = ( ((double)output[i]) * TABLE_SIZE );
+                    if(output[i] != 0.0 && ind < TABLE_SIZE && ind > 0)
+                    {
+                        const int new_index = (int)ind;
+                        // if(new_index == last_index) //stop the bot repeating words
+                        //     continue;
+                        last_index = new_index;
+                        fprintf(f, "%s ", wtable[new_index]);
+                        if(_log == 1)
+                            printf("%s ", wtable[new_index]); //printf("%s (%i) ", wtable[(int)ind], (int)ind);
+                    }
+                }
+                fprintf(f, "\n");
+                if(_log == 1)
+                    printf("\n");
+            }
+        }
+    }
+}
 
 
 //*************************************
@@ -924,6 +1092,14 @@ int main(int argc, char *argv[])
             trainDataset(argv[2]);
             exit(0);
         }
+
+        if(strcmp(argv[1], "genrnd") == 0)
+        {
+            printf("Brute forcing string with an error of: %s\n\n", argv[2]);
+            loadWeights();
+            while(1)
+                rndGen(atof(argv[2]));
+        }
     }
 
     if(argc == 2)
@@ -946,12 +1122,18 @@ int main(int argc, char *argv[])
             exit(0);
         }
 
-        // if(strcmp(argv[1], "gen") == 0)
-        // {
-        //     _log = 1;
-        //     trainGenerator("out.txt");
-        //     exit(0);
-        // }
+        if(strcmp(argv[1], "gen") == 0)
+        {
+            _log = 1;
+            trainGenerator("out.txt");
+            exit(0);
+        }
+
+        if(strcmp(argv[1], "genrnd") == 0)
+        {
+            while(1)
+                rndGen(0.5);
+        }
 
         if(strcmp(argv[1], "rndloop") == 0)
         {
@@ -969,27 +1151,27 @@ int main(int argc, char *argv[])
     }
 
     // no commands ? then I would suppose we are running the generator
-    // loadWeights();
+    loadWeights();
 
-    // // main loop
-    // printf("Running ! ...\n\n");
-    // while(1)
-    // {
-    //     if(countLines("tgmsg.txt") >= DATA_SIZE)
-    //     {
-    //         timestamp();
-    //         const time_t st = time(0);
-    //         loadTable("tgdict.txt");
-    //         trainDataset("tgmsg.txt");
-    //         clearFile("tgmsg.txt");
-    //         trainGenerator("out.txt");
-    //         printf("Just generated a new dataset.\n");
-    //         timestamp();
-    //         printf("Time Taken: %.2f mins\n\n", ((double)(time(0)-st)) / 60.0);
-    //     }
+    // main loop
+    printf("Running ! ...\n\n");
+    while(1)
+    {
+        if(countLines("tgmsg.txt") >= DATA_SIZE)
+        {
+            timestamp();
+            const time_t st = time(0);
+            loadTable("tgdict.txt");
+            trainDataset("tgmsg.txt");
+            clearFile("tgmsg.txt");
+            trainGenerator("out.txt");
+            printf("Just generated a new dataset.\n");
+            timestamp();
+            printf("Time Taken: %.2f mins\n\n", ((double)(time(0)-st)) / 60.0);
+        }
 
-    //     sleep(9);
-    // }
+        sleep(9);
+    }
 
     // done
     return 0;
