@@ -979,7 +979,7 @@ float rndScentence()
     return r*100; //arctan conversion
 }
 
-void rndGen(const float min)
+void rndGen(const float max)
 {
     float nstr[DIGEST_SIZE] = {0};
     const int len = uRand(1, DIGEST_SIZE-1);
@@ -987,7 +987,7 @@ void rndGen(const float min)
         nstr[i] = (((double)uRand(0, TABLE_SIZE))/TABLE_SIZE_H)-1.0;
 
     const float r = doDiscriminator(nstr, -2);
-    if(1-r < min)
+    if(1-r < max)
     {
         for(int i = 0; i < DIGEST_SIZE; i++)
         {
