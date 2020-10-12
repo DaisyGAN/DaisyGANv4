@@ -24,26 +24,37 @@
 
 ///
 
-#define DATA_SIZE 9130 //468272
-#define TABLE_SIZE_MAX 9692 //93606
+#define DATA_SIZE 11060
+#define TABLE_SIZE_MAX 9692
+
+//
 
 #define MESSAGE_SIZE 256
-
 #define DIGEST_SIZE 16
-#define FIRSTLAYER_SIZE 256
-#define HIDDEN_SIZE 512
-
 #define OUTPUT_QUOTES 333
 
 ///
 
+// light and fast config
+#define FAST_MODE
+#define FIRSTLAYER_SIZE 256
+#define HIDDEN_SIZE 512
 #define TRAINING_LOOPS 1
-
 const float _lrate     = 0.03;
 const float _dropout   = 0.2;
-const float _lmomentum = 0.1;
-
+const float _lmomentum = 0.01;
 const float _lgain = 1.0;
+
+/*
+// this is not the vegetarian option
+#define FIRSTLAYER_SIZE 512
+#define HIDDEN_SIZE 1024
+#define TRAINING_LOOPS 1
+const float _lrate     = 0.03;
+const float _dropout   = 0.5;
+const float _lmomentum = 0.01;
+const float _lgain = 1.0;
+*/
 
 //
 
@@ -277,6 +288,9 @@ float qRandWeight(const float min, const float max)
 
 float uRandWeight(const float min, const float max)
 {
+#ifdef FAST_MODE
+    return qRandWeight(min, max);
+#else
     int f = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
     uint s = 0;
     ssize_t result = read(f, &s, 4);
@@ -292,6 +306,7 @@ float uRandWeight(const float min, const float max)
         pr = roundf(rv2 * 100) / 100; // two decimals of precision
     }
     return pr;
+#endif
 }
 
 uint qRand(const uint min, const uint umax)
@@ -311,6 +326,9 @@ uint qRand(const uint min, const uint umax)
 
 uint uRand(const uint min, const uint umax)
 {
+#ifdef FAST_MODE
+    return qRand(min, umax);
+#else
     int f = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
     uint s = 0;
     ssize_t result = read(f, &s, 4);
@@ -321,6 +339,7 @@ uint uRand(const uint min, const uint umax)
     if(rv == 0)
         return min;
     return ( ((float)rv / RAND_MAX) * (max-min) ) + min; //(rand()%(max-min))+min;
+#endif
 }
 
 //https://stackoverflow.com/questions/30432856/best-way-to-get-number-of-lines-in-a-file-c
@@ -979,24 +998,34 @@ float rndScentence()
     return r*100; //arctan conversion
 }
 
-void rndGen(const float max)
+void rndGen(const char* file, const float max)
 {
-    float nstr[DIGEST_SIZE] = {0};
-    const int len = uRand(1, DIGEST_SIZE-1);
-    for(int i = 0; i < len; i++)
-        nstr[i] = (((double)uRand(0, TABLE_SIZE))/TABLE_SIZE_H)-1.0;
-
-    const float r = doDiscriminator(nstr, -2);
-    if(1-r < max)
+    FILE* f = fopen(file, "w");
+    if(f != NULL)
     {
-        for(int i = 0; i < DIGEST_SIZE; i++)
+        float nstr[DIGEST_SIZE] = {0};
+        const int len = uRand(1, DIGEST_SIZE-1);
+        for(int i = 0; i < len; i++)
+            nstr[i] = (((double)uRand(0, TABLE_SIZE))/TABLE_SIZE_H)-1.0;
+
+        const float r = doDiscriminator(nstr, -2);
+        if(1-r < max)
         {
-            const uint ind = (((double)nstr[i]+1.0)*(double)TABLE_SIZE_H)+0.5;
-            if(nstr[i] != 0)
-                printf("%s ", wtable[ind]);
+            for(int i = 0; i < DIGEST_SIZE; i++)
+            {
+                const uint ind = (((double)nstr[i]+1.0)*(double)TABLE_SIZE_H)+0.5;
+                if(nstr[i] != 0)
+                {
+                    printf("%s ", wtable[ind]);
+                    fprintf(f, "%s ", wtable[ind]);
+                }
+            }
+
+            printf("\n");
+            fprintf(f, "\n");
         }
 
-        printf("\n");
+        fclose(f);
     }
 }
 
@@ -1051,6 +1080,8 @@ void trainGenerator(const char* file)
                     printf("\n");
             }
         }
+
+        fclose(f);
     }
 }
 
@@ -1089,6 +1120,7 @@ int main(int argc, char *argv[])
         if(strcmp(argv[1], "retrain") == 0)
         {
             _log = 1;
+            remove("weights.dat");
             trainDataset(argv[2]);
             exit(0);
         }
@@ -1098,7 +1130,7 @@ int main(int argc, char *argv[])
             printf("Brute forcing string with an error of: %s\n\n", argv[2]);
             loadWeights();
             while(1)
-                rndGen(atof(argv[2]));
+                rndGen("out_brute.txt", atof(argv[2]));
         }
     }
 
@@ -1107,6 +1139,7 @@ int main(int argc, char *argv[])
         if(strcmp(argv[1], "retrain") == 0)
         {
             _log = 1;
+            remove("weights.dat");
             trainDataset("tgmsg.txt");
             exit(0);
         }
@@ -1132,7 +1165,7 @@ int main(int argc, char *argv[])
         if(strcmp(argv[1], "genrnd") == 0)
         {
             while(1)
-                rndGen(0.5);
+                rndGen("out_brute.txt", 0.5);
         }
 
         if(strcmp(argv[1], "rndloop") == 0)
