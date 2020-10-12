@@ -3,7 +3,7 @@
     91f7d09794d8da29f028e77df49d4907
     https://github.com/DaisyGAN/
 --------------------------------------------------
-    DaisyGANv4 / PortTalbot
+    DaisyGANv4 / PortTalbotv2
 */
 
 #pragma GCC diagnostic ignored "-Wunused-result"
