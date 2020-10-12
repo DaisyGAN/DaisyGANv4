@@ -30,6 +30,7 @@
 #define TABLE_SIZE_MAX 80000
 #define MESSAGE_SIZE 256
 #define DIGEST_SIZE 16
+#define WORD_SIZE 32
 #define OUTPUT_QUOTES 333
 
 ///
@@ -68,7 +69,7 @@ ptron d4;
 float digest[DATA_SIZE][DIGEST_SIZE] = {0};
 
 //word lookup table / index
-char wtable[TABLE_SIZE_MAX][DIGEST_SIZE+2] = {0}; //+2 for newline and null terminator ref[#1]
+char wtable[TABLE_SIZE_MAX][WORD_SIZE] = {0};
 uint TABLE_SIZE = 0;
 uint TABLE_SIZE_H = 0;
 
@@ -83,7 +84,7 @@ void loadTable(const char* file)
     if(f)
     {
         uint index = 0;
-        while(fgets(wtable[index], DIGEST_SIZE+2, f) != NULL) //+2
+        while(fgets(wtable[index], WORD_SIZE, f) != NULL)
         {
             char* pos = strchr(wtable[index], '\n');
             if(pos != NULL)
@@ -518,21 +519,21 @@ float doDiscriminator(const float* input, const float eo)
     // layer one, inputs (fc)
     float o1[FIRSTLAYER_SIZE];
     for(int i = 0; i < FIRSTLAYER_SIZE; i++)
-        o1[i] = sigmoid(doPerceptron(input, &d1[i]));
+        o1[i] = lecun_tanh(doPerceptron(input, &d1[i]));
 
     // layer two, hidden (fc expansion)
     float o2[HIDDEN_SIZE];
     for(int i = 0; i < HIDDEN_SIZE; i++)
-        o2[i] = sigmoid(doPerceptron(&o1[0], &d2[i]));
+        o2[i] = lecun_tanh(doPerceptron(&o1[0], &d2[i]));
 
     // layer three, hidden (fc)
     float o3[HIDDEN_SIZE];
     
     for(int i = 0; i < HIDDEN_SIZE; i++)
-        o3[i] = sigmoid(doPerceptron(&o2[0], &d3[i]));
+        o3[i] = lecun_tanh(doPerceptron(&o2[0], &d3[i]));
 
     // layer four, output (fc compression)
-    const float output = sigmoid(doPerceptron(&o3[0], &d4));
+    const float output = sigmoid(lecun_tanh(doPerceptron(&o3[0], &d4)));
 
     if(eo == -2)
         return output;
