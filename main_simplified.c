@@ -5,6 +5,8 @@
 --------------------------------------------------
     DaisyGANv4 Simplified / PortTalbotv2
       - Removal of generator code.
+      
+    Simple, fast, fun.
 */
 
 #pragma GCC diagnostic ignored "-Wunused-result"
