@@ -3,7 +3,7 @@ A telegram bot / DaisyGANv4.
 
 The back-propagation was something to be desired in [PortTalbotv1](https://github.com/DaisyGAN/PortTalbot); this version is a re-code to fix all of the issues in the prior code base.
 
-The discriminator this time is significantly better than in prior versions; however, the GAN was still a resounding failure, probably due to the GAN back-propagation; for some reason, I can only assume I am too inexperienced at this point to diagnose.
+The discriminator this time is significantly better than in prior versions; however, the generator was still a resounding failure, probably due to the generator back-propagation; for some reason, I can only assume I am too inexperienced at this point to diagnose.
 
 With the failure of the GAN I decided it would be a suitable alternative to generate random quotes/sentences using brute force, randomly generated and checked against the discriminator only outputting the generations with the specified maximum error.
 
