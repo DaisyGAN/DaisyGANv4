@@ -24,7 +24,7 @@
 
 ///
 
-#define DATA_SIZE 1228 //468272
+#define DATA_SIZE 9130 //468272
 #define TABLE_SIZE_MAX 9692 //93606
 
 #define MESSAGE_SIZE 256
