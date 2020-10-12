@@ -1134,6 +1134,7 @@ int main(int argc, char *argv[])
             printf("Brute forcing string with an error of: %s\n\n", argv[2]);
             loadWeights();
             rndGen("out_brute.txt", atof(argv[2]));
+            exit(0);
         }
     }
 
@@ -1166,7 +1167,10 @@ int main(int argc, char *argv[])
         }
 
         if(strcmp(argv[1], "genrnd") == 0)
+        {
             rndGen("out_brute.txt", 0.5);
+            exit(0);
+        }
 
         if(strcmp(argv[1], "rndloop") == 0)
         {
