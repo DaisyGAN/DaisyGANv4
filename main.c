@@ -1003,26 +1003,30 @@ void rndGen(const char* file, const float max)
     FILE* f = fopen(file, "w");
     if(f != NULL)
     {
-        float nstr[DIGEST_SIZE] = {0};
-        const int len = uRand(1, DIGEST_SIZE-1);
-        for(int i = 0; i < len; i++)
-            nstr[i] = (((double)uRand(0, TABLE_SIZE))/TABLE_SIZE_H)-1.0;
-
-        const float r = doDiscriminator(nstr, -2);
-        if(1-r < max)
+        for(int k = 0; k < OUTPUT_QUOTES; NULL)
         {
-            for(int i = 0; i < DIGEST_SIZE; i++)
-            {
-                const uint ind = (((double)nstr[i]+1.0)*(double)TABLE_SIZE_H)+0.5;
-                if(nstr[i] != 0)
-                {
-                    printf("%s ", wtable[ind]);
-                    fprintf(f, "%s ", wtable[ind]);
-                }
-            }
+            float nstr[DIGEST_SIZE] = {0};
+            const int len = uRand(1, DIGEST_SIZE-1);
+            for(int i = 0; i < len; i++)
+                nstr[i] = (((double)uRand(0, TABLE_SIZE))/TABLE_SIZE_H)-1.0;
 
-            printf("\n");
-            fprintf(f, "\n");
+            const float r = doDiscriminator(nstr, -2);
+            if(1-r < max)
+            {
+                for(int i = 0; i < DIGEST_SIZE; i++)
+                {
+                    const uint ind = (((double)nstr[i]+1.0)*(double)TABLE_SIZE_H)+0.5;
+                    if(nstr[i] != 0)
+                    {
+                        k++;
+                        fprintf(f, "%s ", wtable[ind]);
+                        printf("%s ", wtable[ind]);
+                    }
+                }
+                
+                fprintf(f, "\n");
+                printf("\n");
+            }
         }
 
         fclose(f);
@@ -1129,8 +1133,7 @@ int main(int argc, char *argv[])
         {
             printf("Brute forcing string with an error of: %s\n\n", argv[2]);
             loadWeights();
-            while(1)
-                rndGen("out_brute.txt", atof(argv[2]));
+            rndGen("out_brute.txt", atof(argv[2]));
         }
     }
 
@@ -1163,10 +1166,7 @@ int main(int argc, char *argv[])
         }
 
         if(strcmp(argv[1], "genrnd") == 0)
-        {
-            while(1)
-                rndGen("out_brute.txt", 0.5);
-        }
+            rndGen("out_brute.txt", 0.5);
 
         if(strcmp(argv[1], "rndloop") == 0)
         {
