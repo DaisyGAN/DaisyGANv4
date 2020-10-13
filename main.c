@@ -956,7 +956,7 @@ void consoleAsk()
         }
 
         const float r = doDiscriminator(nstr, -2);
-        printf("This is %.2f%% (%.2f) Human.\n", r * 100, r); //arctan conversion
+        printf("This is %.2f%% (%.2f) Human.\n", r * 100, r);
     }
 }
 
@@ -976,7 +976,7 @@ float isHuman(char* str)
     }
 
     const float r = doDiscriminator(nstr, -2);
-    return r*100; //arctan conversion
+    return r*100;
 }
 
 float rndScentence()
@@ -996,7 +996,7 @@ float rndScentence()
     printf("\n");
 
     const float r = doDiscriminator(nstr, -2);
-    return r*100; //arctan conversion
+    return r*100;
 }
 
 void rndGen(const char* file, const float max)
