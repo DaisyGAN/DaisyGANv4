@@ -43,7 +43,7 @@
 const float _lrate     = 0.03;
 const float _dropout   = 0.2;
 const float _lmomentum = 0.01;
-const float _lgain = 1.0;
+const float _lgain     = 1.0;
 
 /*
 // this is not the vegetarian option
@@ -54,7 +54,7 @@ const float _lgain = 1.0;
 const float _lrate     = 0.03;
 const float _dropout   = 0.5;
 const float _lmomentum = 0.01;
-const float _lgain = 1.0;
+const float _lgain     = 1.0;
 */
 
 //
